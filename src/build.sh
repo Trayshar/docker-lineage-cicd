@@ -184,7 +184,13 @@ for branch in ${BRANCH_NAME//,/ }; do
 
     echo ">> [$(date)] Syncing branch repository" | tee -a "$repo_log"
     builddate=$(date +%Y%m%d)
-    repo sync "${jobs_arg[@]}" -c --force-sync &>> "$repo_log"
+
+    if repo sync "${jobs_arg[@]}" -c --force-sync --no-clone-bundle --no-tags --fail-fast &>> "$repo_log"; then
+      echo ">> [$(date)] Sync successful" | tee -a "$repo_log"
+    else
+      echo ">> [$(date)] Syncing branch repository failed, aborting" | tee -a "$repo_log"
+      exit 1
+    fi
 
     if [ ! -d "vendor/$vendor" ]; then
       echo ">> [$(date)] Missing \"vendor/$vendor\", aborting"
