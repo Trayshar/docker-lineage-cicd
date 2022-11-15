@@ -353,9 +353,11 @@ for branch in ${BRANCH_NAME//,/ }; do
             continue
         fi
 
+        echo ">> [$(date)] Breakfast finished for $codename" | tee -a "$DEBUG_LOG"
+
         if [ -f /root/userscripts/pre-build.sh ]; then
-          echo ">> [$(date)] Running pre-build.sh for $codename" >> "$DEBUG_LOG"
-          /root/userscripts/pre-build.sh "$codename" &>> "$DEBUG_LOG" || echo ">> [$(date)] Warning: pre-build.sh failed!"
+          echo ">> [$(date)] Running pre-build.sh for $codename" | tee -a "$DEBUG_LOG"
+          (/root/userscripts/pre-build.sh "$codename" || echo ">> [$(date)] Warning: pre-build.sh failed!") | tee -a "$DEBUG_LOG"
         fi
 
         # Start the build
@@ -452,6 +454,9 @@ if [ -f /root/userscripts/end.sh ]; then
   echo ">> [$(date)] Running end.sh"
   /root/userscripts/end.sh || echo ">> [$(date)] Warning: end.sh failed!"
 fi
+
+echo ">> [$(date)] CCache stats:" | tee -a "$DEBUG_LOG"
+ccache --show-stats --verbose | tee -a "$DEBUG_LOG"
 
 # Using built-in $SECONDS variable, see https://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html#index-SECONDS
 echo ">> [$(date)] All jobs complete! Took $SECONDS seconds!" | tee -a "$DEBUG_LOG"
