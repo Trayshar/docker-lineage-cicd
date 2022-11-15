@@ -159,23 +159,16 @@ for branch in ${BRANCH_NAME//,/ }; do
     echo ">> [$(date)] Branch:  $branch"
     echo ">> [$(date)] Devices: $devices"
 
-    # Remove previous changes of vendor/cm, vendor/lineage and frameworks/base (if they exist)
-    # TODO: maybe reset everything using https://source.android.com/setup/develop/repo#forall
-    for path in "vendor/cm" "vendor/lineage" "frameworks/base" "packages/apps/PermissionController" "packages/modules/Permission"; do
-      if [ -d "$path" ]; then
-        cd "$path"
-        git reset -q --hard
-        git clean -q -fd
-        cd "$SRC_DIR/$branch_dir"
-      fi
-    done
-
     echo ">> [$(date)] (Re)initializing branch repository" | tee -a "$repo_log"
     if [ "$LOCAL_MIRROR" = true ]; then
       ( yes||: ) | repo init -u https://github.com/LineageOS/android.git --reference "$MIRROR_DIR" -b "$branch" --git-lfs &>> "$repo_log"
     else
       ( yes||: ) | repo init -u https://github.com/LineageOS/android.git -b "$branch" --git-lfs &>> "$repo_log"
     fi
+    
+    echo ">> [$(date)] Hard-reseting branch repository" | tee -a "$repo_log"
+    repo forall -vc "git reset -q --hard" &>> "$repo_log"
+    repo forall -vc "git clean -q -fd" &>> "$repo_log"
 
     # Copy local manifests to the appropriate folder in order take them into consideration
     echo ">> [$(date)] Copying '$LMANIFEST_DIR/*.xml' to '.repo/local_manifests/'"
