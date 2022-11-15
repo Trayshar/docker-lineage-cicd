@@ -21,6 +21,9 @@ set -eEuo pipefail
 
 repo_log="$LOGS_DIR/repo-$(date +%Y%m%d).log"
 
+# Start counting seconds, see https://stackoverflow.com/a/31663949
+SECONDS=0
+
 # cd to working directory
 cd "$SRC_DIR"
 
@@ -450,3 +453,6 @@ if [ -f /root/userscripts/end.sh ]; then
   echo ">> [$(date)] Running end.sh"
   /root/userscripts/end.sh || echo ">> [$(date)] Warning: end.sh failed!"
 fi
+
+# Using built-in $SECONDS variable, see https://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html#index-SECONDS
+echo ">> [$(date)] All jobs complete! Took $SECONDS seconds!" | tee -a "$DEBUG_LOG"
