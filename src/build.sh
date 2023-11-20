@@ -458,8 +458,5 @@ if [ -f /root/userscripts/end.sh ]; then
   /root/userscripts/end.sh || echo ">> [$(date)] Warning: end.sh failed!"
 fi
 
-echo ">> [$(date)] CCache stats:" | tee -a "$DEBUG_LOG"
-ccache --show-stats --verbose | tee -a "$DEBUG_LOG"
-
 # Using built-in $SECONDS variable, see https://www.gnu.org/savannah-checkouts/gnu/bash/manual/bash.html#index-SECONDS
 echo ">> [$(date)] All jobs complete! Took $SECONDS seconds!" | tee -a "$DEBUG_LOG"
