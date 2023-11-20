@@ -19,7 +19,8 @@
 
 set -eEuo pipefail
 
-repo_log="$LOGS_DIR/repo-$(date +%Y%m%d).log"
+repo_log="$LOGS_DIR/repo-${LOGS_NAME:-$(date +%Y%m%d)}.log"
+echo ">> [$(date)] Logfile for repo init: tail -f \"repo-$LOGS_NAME.log\""
 
 # Start counting seconds, see https://stackoverflow.com/a/31663949
 SECONDS=0
@@ -337,7 +338,8 @@ for branch in ${BRANCH_NAME//,/ }; do
           logsubdir=
         fi
 
-        DEBUG_LOG="$LOGS_DIR/$logsubdir/lineage-$los_ver-$builddate-$RELEASE_TYPE-$codename.log"
+        DEBUG_LOG="$LOGS_DIR/$logsubdir/lineage-$los_ver-$RELEASE_TYPE-$codename-${LOGS_NAME:-$builddate}.log"
+        echo ">> [$(date)] Logfile for $codename: tail -f \"$logsubdir/lineage-$los_ver-$RELEASE_TYPE-$codename-${LOGS_NAME:-$builddate}.log\""
 
         set +eu
         breakfast "$codename" "$BUILD_TYPE" &>> "$DEBUG_LOG"
