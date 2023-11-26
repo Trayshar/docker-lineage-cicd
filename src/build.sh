@@ -19,8 +19,16 @@
 
 set -eEuo pipefail
 
-repo_log="$LOGS_DIR/repo-${LOGS_NAME:-$(date +%Y%m%d)}.log"
-echo ">> [$(date)] Logfile for repo init: tail -f \"repo-$LOGS_NAME.log\""
+# Unique identifier for this build instance
+build_iden=${BUILD_IDENTIFIER:-$(date +%Y%m%d)}
+if [ "$BUILD_IDENTIFIER" = true ]; then
+  echo ">> [$(date)] Starting build \"$build_iden\""
+fi
+
+repo_log="$LOGS_DIR/repo-$build_iden.log"
+if [ "$PRINT_LOGFILE_PATHS" = true ]; then
+  echo ">> [$(date)] Logfile for repo init: tail -f \"repo-$build_iden.log\""
+fi
 
 # Start counting seconds, see https://stackoverflow.com/a/31663949
 SECONDS=0
@@ -184,7 +192,6 @@ for branch in ${BRANCH_NAME//,/ }; do
     fi
 
     echo ">> [$(date)] Syncing branch repository" | tee -a "$repo_log"
-    builddate=$(date +%Y%m%d)
 
     if repo sync "${jobs_arg[@]}" -c --force-sync --no-clone-bundle --no-tags --fail-fast &>> "$repo_log"; then
       echo ">> [$(date)] Sync successful" | tee -a "$repo_log"
@@ -325,21 +332,33 @@ for branch in ${BRANCH_NAME//,/ }; do
         fi
         cd "$source_dir"
 
-        if [ "$ZIP_SUBDIR" = true ]; then
+        # Unique identifier for all artifacts related to this build
+        artifacts_identifier="lineage-$los_ver-$build_iden-$RELEASE_TYPE-$codename"
+
+        if [[ "$ZIP_SUBDIR" == "codename" || "$ZIP_SUBDIR" == "true" ]]; then
           zipsubdir=$codename
+          mkdir -p "$ZIP_DIR/$zipsubdir"
+        elif [[ "$ZIP_SUBDIR" == "artifacts" ]]; then
+          zipsubdir=$artifacts_identifier
           mkdir -p "$ZIP_DIR/$zipsubdir"
         else
           zipsubdir=
         fi
-        if [ "$LOGS_SUBDIR" = true ]; then
+
+        if [[ "$LOGS_SUBDIR" == "codename" || "$LOGS_SUBDIR" = true ]]; then
           logsubdir=$codename
           mkdir -p "$LOGS_DIR/$logsubdir"
+        elif [[ "$LOGS_SUBDIR" == "artifacts" ]]; then
+          logsubdir=$artifacts_identifier
+          mkdir -p "$ZIP_DIR/$logsubdir"
         else
           logsubdir=
         fi
 
-        DEBUG_LOG="$LOGS_DIR/$logsubdir/lineage-$los_ver-$RELEASE_TYPE-$codename-${LOGS_NAME:-$builddate}.log"
-        echo ">> [$(date)] Logfile for $codename: tail -f \"$logsubdir/lineage-$los_ver-$RELEASE_TYPE-$codename-${LOGS_NAME:-$builddate}.log\""
+        DEBUG_LOG="$LOGS_DIR/$logsubdir/$artifacts_identifier.log"
+        if [ "$PRINT_LOGFILE_PATHS" = true ]; then
+          echo ">> [$(date)] Logfile for $codename: tail -f \"$logsubdir/$artifacts_identifier.log\""
+        fi
 
         set +eu
         breakfast "$codename" "$BUILD_TYPE" &>> "$DEBUG_LOG"
@@ -349,8 +368,8 @@ for branch in ${BRANCH_NAME//,/ }; do
             echo ">> [$(date)] breakfast failed for $codename, $branch branch" | tee -a "$DEBUG_LOG"
             # call post-build.sh so the failure is logged in a way that is more visible
             if [ -f /root/userscripts/post-build.sh ]; then
-              echo ">> [$(date)] Running post-build.sh for $codename" >> "$DEBUG_LOG"
-              /root/userscripts/post-build.sh "$codename" false "$branch" &>> "$DEBUG_LOG" || echo ">> [$(date)] Warning: post-build.sh failed!"
+              echo ">> [$(date)] Running post-build.sh for $codename" | tee -a "$DEBUG_LOG"
+              (/root/userscripts/post-build.sh "$codename" false "$branch" || echo ">> [$(date)] Warning: post-build.sh failed!") | tee -a "$DEBUG_LOG"
             fi
             continue
         fi
@@ -380,10 +399,10 @@ for branch in ${BRANCH_NAME//,/ }; do
 
           for image in recovery boot vendor_boot dtbo super_empty vbmeta vendor_kernel_boot; do
             if [ -f "$image.img" ]; then
-              recovery_name="lineage-$los_ver-$builddate-$RELEASE_TYPE-$codename-$image.img"
-              echo ">> [$(date)] Copying $image.img" to "$ZIP_DIR/$zipsubdir/$recovery_name" >> "$DEBUG_LOG"
-              cp "$image.img" "$ZIP_DIR/$zipsubdir/$recovery_name" &>> "$DEBUG_LOG"
-              files_to_hash+=( "$recovery_name" )
+              artifact_name="$artifacts_identifier-$image.img"
+              echo ">> [$(date)] Copying $image.img" to "$ZIP_DIR/$zipsubdir/$artifact_name" >> "$DEBUG_LOG"
+              cp "$image.img" "$ZIP_DIR/$zipsubdir/$artifact_name" &>> "$DEBUG_LOG"
+              files_to_hash+=( "$artifact_name" )
             fi
           done
           cd "$ZIP_DIR/$zipsubdir"
@@ -412,8 +431,8 @@ for branch in ${BRANCH_NAME//,/ }; do
           fi
         fi
         if [ -f /root/userscripts/post-build.sh ]; then
-          echo ">> [$(date)] Running post-build.sh for $codename" >> "$DEBUG_LOG"
-          /root/userscripts/post-build.sh "$codename" $build_successful "$branch" &>> "$DEBUG_LOG" || echo ">> [$(date)] Warning: post-build.sh failed!"
+          echo ">> [$(date)] Running post-build.sh for $codename" | tee -a "$DEBUG_LOG"
+          (/root/userscripts/post-build.sh "$codename" $build_successful "$branch" || echo ">> [$(date)] Warning: post-build.sh failed!") | tee -a "$DEBUG_LOG"
         fi
         echo ">> [$(date)] Finishing build for $codename" | tee -a "$DEBUG_LOG"
 
