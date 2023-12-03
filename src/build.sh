@@ -19,6 +19,11 @@
 
 set -eEuo pipefail
 
+die () {
+  echo ">> [$(date)] Error: $@"
+  exit 1
+}
+
 # Unique identifier for this build instance
 build_iden=${BUILD_IDENTIFIER:-$(date +%Y%m%d)}
 if [ "$BUILD_IDENTIFIER" = true ]; then
@@ -38,7 +43,7 @@ cd "$SRC_DIR"
 
 if [ -f /root/userscripts/begin.sh ]; then
   echo ">> [$(date)] Running begin.sh"
-  /root/userscripts/begin.sh || echo ">> [$(date)] Warning: begin.sh failed!"
+  (/root/userscripts/begin.sh | tee -a "$repo_log") || die "begin.sh failed!"
 fi
 
 # If requested, clean the OUT dir in order to avoid clutter
@@ -73,8 +78,7 @@ if [ -n "${PARALLEL_JOBS-}" ]; then
   if [[ "$PARALLEL_JOBS" =~ ^[1-9][0-9]*$ ]]; then
     jobs_arg+=( "-j$PARALLEL_JOBS" )
   else
-    echo "PARALLEL_JOBS is not a positive number: $PARALLEL_JOBS"
-    exit 1
+    die "PARALLEL_JOBS is not a positive number: $PARALLEL_JOBS"
   fi
 fi
 
@@ -266,8 +270,7 @@ for branch in ${BRANCH_NAME//,/ }; do
         # "Old" Updater project structure
         updater_values_dir="packages/apps/Updater/res/values"
       else
-        echo ">> [$(date)] ERROR: no 'values' dir of Updater app found"
-        exit 1
+        die "no 'values' dir of Updater app found"
       fi
 
       updater_url_overlay_dir="vendor/$vendor/overlay/microg/${updater_values_dir}/"
@@ -280,8 +283,7 @@ for branch in ${BRANCH_NAME//,/ }; do
         # "Old" updater configuration: just the URL
         sed "s|{name}|conf_update_server_url_def|g; s|{url}|$OTA_URL|g" /root/packages_updater_strings.xml > "$updater_url_overlay_dir/strings.xml"
       else
-        echo ">> [$(date)] ERROR: no known Updater URL property found"
-        exit 1
+        die "no known Updater URL property found"
       fi
     fi
 
@@ -313,7 +315,7 @@ for branch in ${BRANCH_NAME//,/ }; do
 
     if [ -f /root/userscripts/before.sh ]; then
       echo ">> [$(date)] Running before.sh"
-      /root/userscripts/before.sh || echo ">> [$(date)] Warning: before.sh failed!"
+      (/root/userscripts/before.sh | tee -a "$repo_log") || die "before.sh failed!"
     fi
 
     for codename in ${devices//,/ }; do
@@ -369,7 +371,7 @@ for branch in ${BRANCH_NAME//,/ }; do
             # call post-build.sh so the failure is logged in a way that is more visible
             if [ -f /root/userscripts/post-build.sh ]; then
               echo ">> [$(date)] Running post-build.sh for $codename" | tee -a "$DEBUG_LOG"
-              (/root/userscripts/post-build.sh "$codename" false "$branch" || echo ">> [$(date)] Warning: post-build.sh failed!") | tee -a "$DEBUG_LOG"
+              (/root/userscripts/post-build.sh "$codename" false "$branch" | tee -a "$DEBUG_LOG") || die "post-build.sh failed"
             fi
             continue
         fi
@@ -378,7 +380,7 @@ for branch in ${BRANCH_NAME//,/ }; do
 
         if [ -f /root/userscripts/pre-build.sh ]; then
           echo ">> [$(date)] Running pre-build.sh for $codename" | tee -a "$DEBUG_LOG"
-          (/root/userscripts/pre-build.sh "$codename" || echo ">> [$(date)] Warning: pre-build.sh failed!") | tee -a "$DEBUG_LOG"
+          (/root/userscripts/pre-build.sh "$codename" | tee -a "$DEBUG_LOG") || die "pre-build.sh failed"
         fi
 
         # Start the build
@@ -432,7 +434,7 @@ for branch in ${BRANCH_NAME//,/ }; do
         fi
         if [ -f /root/userscripts/post-build.sh ]; then
           echo ">> [$(date)] Running post-build.sh for $codename" | tee -a "$DEBUG_LOG"
-          (/root/userscripts/post-build.sh "$codename" $build_successful "$branch" || echo ">> [$(date)] Warning: post-build.sh failed!") | tee -a "$DEBUG_LOG"
+          (/root/userscripts/post-build.sh "$codename" $build_successful "$branch" | tee -a "$DEBUG_LOG") || die "post-build.sh failed"
         fi
         echo ">> [$(date)] Finishing build for $codename" | tee -a "$DEBUG_LOG"
 
