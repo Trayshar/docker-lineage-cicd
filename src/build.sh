@@ -347,7 +347,7 @@ for branch in ${BRANCH_NAME//,/ }; do
           zipsubdir=
         fi
 
-        if [[ "$LOGS_SUBDIR" == "codename" || "$LOGS_SUBDIR" = true ]]; then
+        if [[ "$LOGS_SUBDIR" == "codename" || "$LOGS_SUBDIR" == "true" ]]; then
           logsubdir=$codename
           mkdir -p "$LOGS_DIR/$logsubdir"
         elif [[ "$LOGS_SUBDIR" == "artifacts" ]]; then
